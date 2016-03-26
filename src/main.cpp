@@ -1,14 +1,61 @@
-#include <Arduino.h>
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
-#include <ESP8266WebServer.h>
-#include <ESP8266mDNS.h>
+#include <lwip/def.h>
 
 #include "secrets.h"
+#include "platform.h"
+#include "logic.h"
 
+class EspTcpClient : public TcpClient{
+public:
 
+  virtual bool connected() override {return _client.connected() != 0;}
+  virtual bool connect(const char* host, int port) override {return _client.connect(host, port);}
+  virtual int  available() override {return _client.available();}
+  virtual void stop() override {return _client.stop();}
+  virtual int  read() override {return _client.read();}
+  virtual size_t  write(const uint8_t *buf, size_t size) override {return _client.write(buf, size);}
+
+private:
+  WiFiClient _client;
+};
+
+class DefaultPlatform : public Platform {
+public:
+  virtual TcpClient& getClient() override;
+  virtual uint32_t detectRfidId() override;
+
+  virtual void getStickId(uint8_t* byteArray) override;
+
+  virtual unsigned long millis() override { return millis();}
+  virtual void println(const char* s )override { Serial.println(s);}
+
+  virtual uint32_t hostToNetwork(uint32_t i) {return htonl(i);}
+private:
+  EspTcpClient _client;
+} platform;
+
+TcpClient& DefaultPlatform::getClient() {
+  return   _client;
+}
+uint32_t DefaultPlatform::detectRfidId() {
+  return 0;
+}
+
+void DefaultPlatform::getStickId(uint8_t* byteArray) {
+  uint8_t mac[6];
+  WiFi.macAddress(mac);
+  byteArray[0] = mac[0];
+  byteArray[1] = mac[1];
+  byteArray[2] = mac[2];
+  byteArray[3] = mac[3];
+}
 
 void setup(void){
+  Serial.begin(9600);
+
+  Serial.print("connecting to ");
+  Serial.println(ssid);
   WiFi.begin(ssid, password);
   // Wait for connection
   while (WiFi.status() != WL_CONNECTED) {
@@ -16,50 +63,11 @@ void setup(void){
     Serial.print(".");
   }
 
-  MDNS.begin("flower");
-  //  MDNS.queryService("tree", "tcp");
-
 }
 
-WiFiClient client;
+void loop(void) {
 
-void loop(void){
-
-  uint8_t frame[16];
-  if (!client.connected() != 0) {
-    if (!client.connect("uival", 80)) {
-      delay(5000);
-      return;
-    }
-
-  }
-
-  // read and handle frame:
-  // server needs to ping us every 2 minutes; otherwise this might be a
-  // half open connection and we timeout and reconnect.
-  int timeout = millis() + 120*1000;
-
-  while (client.available() == 0) {
-    if (timeout - millis() < 0) {
-      Serial.println(">>> Client Timeout !");
-      client.stop();
-      return;
-    }
-
-    // TODO add check RFID here, and send command to server if needed
-  }
-
-  // start to read frame, add a second to the timeout
-  timeout += 1000;
-
-
-  for (int i = 0;i < 16;i++) {
-
-    if (timeout - millis() < 0) {
-      Serial.println(">>> Client Timeout !");
-      client.stop();
-      return;
-    }
-  }
-
+    Serial.println("Runnin' loop");
+    run(platform);
+    Serial.println("runned loop");
 }
