@@ -74,10 +74,10 @@ platform.println("can't connect, waiting 0");
     // read and handle frame:
     // server needs to ping us every 2 minutes; otherwise this might be a
     // half open connection and we timeout and reconnect.
-    int32_t timeout = platform.millis() + 120*1000;
+    int32_t timeout = millis() + 120*1000;
 
     while (client.connected() && (client.available() == 0)) {
-      if ((timeout - int32_t(platform.millis())) < 0) {
+      if ((timeout - int32_t(millis())) < 0) {
 platform.println(">>> Client Timeout !");
         client.stop();
         return;
@@ -96,7 +96,7 @@ delay(0);
     }
 
     // start to read frame, add a second to the timeout
-    timeout = platform.millis() + 1000;
+    timeout = millis() + 1000;
 
 
     for (int i = 0; i < 16; i++) {
@@ -106,7 +106,7 @@ delay(0);
       while (client.connected() && (client.available() == 0)) {
         delay(0);
 
-        if ((timeout - int32_t(platform.millis()))  < 0) {
+        if ((timeout - int32_t(millis()))  < 0) {
           platform.println(">>> Client Timeout !");
           client.stop();
           return;

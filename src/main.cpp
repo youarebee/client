@@ -27,7 +27,6 @@ public:
 
   virtual void getStickId(uint8_t* byteArray) override;
 
-  virtual unsigned long millis() override { return millis();}
   virtual void println(const char* s )override { Serial.println(s);}
 
   virtual uint32_t hostToNetwork(uint32_t i) {return htonl(i);}

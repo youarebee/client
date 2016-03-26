@@ -6,6 +6,7 @@
 
 #ifndef ARDUINO
 void delay(unsigned long);
+unsigned long millis();
 #else
 #include "Arduino.h"
 #endif
@@ -18,7 +19,7 @@ public:
   virtual int  available() = 0;
   virtual void stop() = 0;
   virtual int  read() = 0;
-  virtual size_t  write(const uint8_t *buf, size_t size) = 0;
+  virtual size_t write(const uint8_t *buf, size_t size) = 0;
 
 private:
 
@@ -28,7 +29,6 @@ class Platform {
 public:
   virtual TcpClient& getClient() = 0;
   virtual uint32_t detectRfidId() = 0;
-  virtual unsigned long millis() = 0;
   virtual void getStickId(uint8_t* byteArray) = 0;
   virtual uint32_t hostToNetwork(uint32_t) = 0;
   virtual void println(const char* s ) = 0;
