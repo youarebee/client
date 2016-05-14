@@ -94,10 +94,9 @@ int run(Platform& platform) {
     // start to read frame, add a second to the timeout
     timeout = millis() + 1000;
 
-
+    platform.println("reading packet");
     for (int i = 0; i < 16; i++) {
 
-      platform.println("reading packet byte");
 
       while (client.connected() && (client.available() == 0)) {
         delay(0);
@@ -117,6 +116,8 @@ int run(Platform& platform) {
 
 
 void handlePacket(const Events& packet, Platform& platform) {
+uint8_t r,g,b;
+  platform.println("handle packet");
 
 switch (packet.rawPacket.packetFrame.type) {
   case CHELLO_PACKET:
@@ -132,8 +133,15 @@ switch (packet.rawPacket.packetFrame.type) {
   // TODO...
     break;
   case SET_COLOR_PACKET:
+  platform.println("setting led color");
+
+     r = packet.rawPacket.packetFrame.packets.SetColorPacket.r;
+     g = packet.rawPacket.packetFrame.packets.SetColorPacket.g;
+     b = packet.rawPacket.packetFrame.packets.SetColorPacket.b;
   // set color!
-    // TODO
+  platform.setLed(r, g, b);
+
+
     break;
   case HEARTBREAT_PACKET:
   // ignore

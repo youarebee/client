@@ -115,9 +115,9 @@ RFID DefaultPlatform::detectRfidId() {
 }
 
 void DefaultPlatform::setLed(uint8_t r,uint8_t g,uint8_t b) {
-
-  analogWrite(RED_LED, b);
-  analogWrite(GRN_LED, b);
+  Serial.printf("Setting led to #%02X%02X%02X\n", (uint32_t) r,(uint32_t) g,(uint32_t) b);
+  analogWrite(RED_LED, r);
+  analogWrite(GRN_LED, g);
   analogWrite(BLU_LED, b);
 }
 
@@ -148,6 +148,13 @@ void setup(void){
 
   Serial.begin(9600);
   Serial.println(F("Booting...."));
+
+  platform.setLed(255, 0, 0);
+  delay(250);
+  platform.setLed(0, 255, 0);
+  delay(250);
+  platform.setLed(0, 0, 255);
+  delay(250);
   delay(250);
 
   SPI.begin();	         // Init SPI bus

@@ -37,6 +37,7 @@ public:
   virtual void getStickId(uint8_t* byteArray) = 0;
   virtual uint32_t hostToNetwork(uint32_t) = 0;
   virtual void println(const char* s ) = 0;
+  virtual void  setLed(uint8_t r,uint8_t g,uint8_t b) = 0;
 
   virtual ~Platform(){}
 };
