@@ -72,6 +72,9 @@ void dump_byte_array(byte *buffer, byte bufferSize) {
   }
 }
 
+#define EVENT_THRESH 2000
+unsigned long lastEventMillis;
+
 RFID DefaultPlatform::detectRfidId() {
   static bool ledMode;
   // https://github.com/Jorgen-VikingGod/ESP8266-MFRC522/blob/master/ESP8266-MFRC522.ino
@@ -85,6 +88,14 @@ RFID DefaultPlatform::detectRfidId() {
         ledMode = LOW;
       }
       digitalWrite(LED_PIN, ledMode);
+
+      unsigned long curMilis = millis();
+      unsigned long diff = curMilis - lastEventMillis;
+      lastEventMillis = curMilis;
+      if (diff < EVENT_THRESH) {
+          RFID id = {{0}};
+          return id;
+      }
 
     Serial.print("Got serial id! ");
     dump_byte_array(mfrc522.uid.uidByte, mfrc522.uid.size);

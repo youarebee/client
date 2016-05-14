@@ -45,7 +45,6 @@ enum {
 
 void handlePacket(const Events& packet, Platform& platform);
 
-
 int run(Platform& platform) {
 
     Events frame;
