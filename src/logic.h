@@ -4,7 +4,7 @@
 class Platform;
 
 extern const char* HOST;
-void run(Platform& platform);
+int run(Platform& platform);
 
 
 #endif

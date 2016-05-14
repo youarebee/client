@@ -25,10 +25,15 @@ private:
 
 };
 
+
+typedef struct {
+  uint8_t id[4];
+} RFID;
+
 class Platform {
 public:
   virtual TcpClient& getClient() = 0;
-  virtual uint32_t detectRfidId() = 0;
+  virtual RFID detectRfidId() = 0;
   virtual void getStickId(uint8_t* byteArray) = 0;
   virtual uint32_t hostToNetwork(uint32_t) = 0;
   virtual void println(const char* s ) = 0;

@@ -4,7 +4,7 @@
 #include <string.h>
 
 const uint16_t PORT = 2323;
-const char* HOST = "yuval";
+const char* HOST = "192.168.1.106";
 
 typedef uint8_t NodeId[4];
 
@@ -46,7 +46,7 @@ enum {
 void handlePacket(const Events& packet, Platform& platform);
 
 
-void run(Platform& platform) {
+int run(Platform& platform) {
 
     Events frame;
     memset(&frame, 0, sizeof(Events));
@@ -55,13 +55,11 @@ void run(Platform& platform) {
     TcpClient& client = platform.getClient();
 
     if (!client.connected()) {
-platform.println("Tryinge to connect to " );
-platform.println(HOST);
+      platform.println("Trying to connect to " );
+      platform.println(HOST);
       if (!client.connect(HOST, PORT)) {
-platform.println("can't connect, waiting 0");
-        delay(5000);
-//platform.println("delayed");
-        return;
+        platform.println("can't connect.");
+        return -1;
       } else {
         platform.println("New connection, sending hello.");
 
@@ -78,19 +76,18 @@ platform.println("can't connect, waiting 0");
 
     while (client.connected() && (client.available() == 0)) {
       if ((timeout - int32_t(millis())) < 0) {
-platform.println(">>> Client Timeout !");
+        platform.println(">>> Client Timeout !");
         client.stop();
-        return;
+        return 0;
       }
-
-delay(0);
-      uint32_t id = platform.detectRfidId();
-      if (id != 0) {
+      // delay activates the wifi stack
+      delay(0);
+      RFID id = platform.detectRfidId();
+      if ((id.id[0] != 0)||(id.id[1] != 0)||(id.id[2] != 0)||(id.id[3] != 0)) {
       platform.println("got rfid, sending touch packet");
         // send touch event to server
         frame.rawPacket.packetFrame.type = TOUCHED_PACKET;
-        id = platform.hostToNetwork(id);
-        memcpy(frame.rawPacket.packetFrame.packets.TouhcedPacket.flowerId, &id, 4);
+        memcpy(frame.rawPacket.packetFrame.packets.TouhcedPacket.flowerId, id.id, 4);
         client.write(frame.rawPacket.data, FRAME_SIZE);
       }
     }
@@ -109,13 +106,14 @@ delay(0);
         if ((timeout - int32_t(millis()))  < 0) {
           platform.println(">>> Client Timeout !");
           client.stop();
-          return;
+          return 0;
         }
       }
       frame.rawPacket.data[i] = client.read();
     }
 
     handlePacket(frame, platform);
+    return 0;
   }
 
 
