@@ -25,7 +25,7 @@ GND     = GND
 
 
 #define RED_LED 0
-#define GRN_LED 10
+#define GRN_LED 15
 #define BLU_LED 4
 
 
@@ -87,7 +87,7 @@ RFID DefaultPlatform::detectRfidId() {
       } else {
         ledMode = LOW;
       }
-      digitalWrite(LED_PIN, ledMode);
+  //    digitalWrite(LED_PIN, ledMode);
 
       unsigned long curMilis = millis();
       unsigned long diff = curMilis - lastEventMillis;
@@ -116,9 +116,9 @@ RFID DefaultPlatform::detectRfidId() {
 
 void DefaultPlatform::setLed(uint8_t r,uint8_t g,uint8_t b) {
   Serial.printf("Setting led to #%02X%02X%02X\n", (uint32_t) r,(uint32_t) g,(uint32_t) b);
-  analogWrite(RED_LED, r);
-  analogWrite(GRN_LED, g);
-  analogWrite(BLU_LED, b);
+  analogWrite(BLU_LED, map(b,0,255,0,1023));
+  analogWrite(GRN_LED, map(g,0,255,0,1023));
+  analogWrite(RED_LED, map(r,0,255,0,1023));
 }
 
 
@@ -135,13 +135,22 @@ void DefaultPlatform::getStickId(uint8_t* byteArray) {
 
 void setup(void){
 
-  analogWriteRange(255);
+//  analogWriteRange(255);
+// analogWriteFreq(1<<9);
 
-  pinMode(LED_PIN, OUTPUT);
+//  pinMode(LED_PIN, OUTPUT);
   pinMode(RED_LED, OUTPUT);
   pinMode(GRN_LED, OUTPUT);
   pinMode(BLU_LED, OUTPUT);
 
+    delay(1000);
+    digitalWrite(RED_LED, HIGH);
+    delay(1000);
+    digitalWrite(GRN_LED, HIGH);
+    platform.setLed(0, 255, 0);
+    delay(1000);
+    digitalWrite(BLU_LED, HIGH);
+    delay(1000);
   // blue hello
   platform.setLed(0, 0, 255);
 
@@ -150,12 +159,11 @@ void setup(void){
   Serial.println(F("Booting...."));
 
   platform.setLed(255, 0, 0);
-  delay(250);
+  delay(1000);
   platform.setLed(0, 255, 0);
-  delay(250);
+  delay(1000);
   platform.setLed(0, 0, 255);
-  delay(250);
-  delay(250);
+  delay(1000);
 
   SPI.begin();	         // Init SPI bus
   mfrc522.PCD_Init();    // Init MFRC522
@@ -167,9 +175,9 @@ void setup(void){
   while (WiFi.status() != WL_CONNECTED) {
 
     platform.setLed(0, 0, 0);
-    delay(250);
+    delay(500);
     platform.setLed(255, 0, 0);
-    delay(250);
+    delay(500);
 
     Serial.print(".");
   }
