@@ -4,7 +4,7 @@
 #include <string.h>
 
 const uint16_t PORT = 2323;
-const char* HOST = "192.168.1.106";
+const char* HOST = "192.168.1.103";
 
 typedef uint8_t NodeId[4];
 
@@ -80,7 +80,7 @@ int run(Platform& platform) {
         return 0;
       }
       // delay activates the wifi stack
-      delay(0);
+      yield();
       RFID id = platform.detectRfidId();
       if ((id.id[0] != 0)||(id.id[1] != 0)||(id.id[2] != 0)||(id.id[3] != 0)) {
       platform.println("got rfid, sending touch packet");
@@ -99,7 +99,7 @@ int run(Platform& platform) {
 
 
       while (client.connected() && (client.available() == 0)) {
-        delay(0);
+        yield();
 
         if ((timeout - int32_t(millis()))  < 0) {
           platform.println(">>> Client Timeout !");

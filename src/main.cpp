@@ -8,7 +8,12 @@
 
 #include "MFRC522.h"
 
+#include <math.h>
 
+#include <Ticker.h>
+
+
+#define SHOULD_BREATH 1
 /* wiring the MFRC522 to ESP8266 (ESP-12)
 RST     = GPIO15
 SDA(SS) = GPIO2
@@ -24,10 +29,9 @@ GND     = GND
 #define SS_PIN	16 // 16  // SDA-PIN für RC522 - RFID - SPI - Modul GPIO2
 
 
-#define RED_LED 0
+#define RED_LED 4
 #define GRN_LED 15
-#define BLU_LED 4
-
+#define BLU_LED 0
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
 
@@ -114,14 +118,63 @@ RFID DefaultPlatform::detectRfidId() {
   return id;
 }
 
+int ledR, ledG, ledB;
+
 void DefaultPlatform::setLed(uint8_t r,uint8_t g,uint8_t b) {
   Serial.printf("Setting led to #%02X%02X%02X\n", (uint32_t) r,(uint32_t) g,(uint32_t) b);
-  analogWrite(BLU_LED, map(b,0,255,0,1023));
-  analogWrite(GRN_LED, map(g,0,255,0,1023));
-  analogWrite(RED_LED, map(r,0,255,0,1023));
+  noInterrupts();
+  ledR = r;
+  ledG = g;
+  ledB = b;
+  interrupts();
+
 }
 
+#define BREATH_TIME 3000
 
+#define SetLedToColor(r,g,b) do { \
+  analogWrite(BLU_LED, map(r,0,255,0,1023)); \
+  analogWrite(GRN_LED, map(g,0,255,0,1023)); \
+  analogWrite(RED_LED, map(b,0,255,0,1023)); \
+} while(0)
+
+
+void breath() {
+#if ! SHOULD_BREATH
+  SetLedToColor(ledR, ledG, ledB);
+#else
+  float r,g,b;
+
+  unsigned long curMilis = millis()%BREATH_TIME;
+
+  if (curMilis > (BREATH_TIME/2)) {
+    curMilis = BREATH_TIME - curMilis;
+  }
+
+  float curPhase = (1.0*curMilis / (BREATH_TIME/2));
+
+ // start with the phase this goes from 0 to 1
+ // now we want to map  0 to min part of the sine and 255 to the max
+
+  r = g = b = -PI/2;
+
+  // now R is in [-pi/2,pi + pi/2]
+  r += PI*(curPhase * ledR / 255.0);
+  g += PI*(curPhase * ledG / 255.0);
+  b += PI*(curPhase * ledB / 255.0);
+
+  // http://sean.voisen.org/blog/2011/10/breathing-led-with-arduino/
+  uint8_t bR = (exp(sin(r)) - 0.36787944)*108.0;
+  uint8_t bG = (exp(sin(g)) - 0.36787944)*108.0;
+  uint8_t bB = (exp(sin(b)) - 0.36787944)*108.0;
+
+  analogWrite(BLU_LED, map(bR,0,255,0,1023));
+  analogWrite(GRN_LED, map(bG,0,255,0,1023));
+  analogWrite(RED_LED, map(bB,0,255,0,1023));
+#endif
+}
+
+Ticker breather;
 
 
 void DefaultPlatform::getStickId(uint8_t* byteArray) {
@@ -135,60 +188,47 @@ void DefaultPlatform::getStickId(uint8_t* byteArray) {
 
 void setup(void){
 
-//  analogWriteRange(255);
-// analogWriteFreq(1<<9);
+  Serial.begin(9600);
+  Serial.println(F("Booting...."));
+  delay(1000);
+
+  SPI.begin();	         // Init SPI bus
+  mfrc522.PCD_Init();    // Init MFRC522
 
 //  pinMode(LED_PIN, OUTPUT);
   pinMode(RED_LED, OUTPUT);
   pinMode(GRN_LED, OUTPUT);
   pinMode(BLU_LED, OUTPUT);
 
-    delay(1000);
-    digitalWrite(RED_LED, HIGH);
-    delay(1000);
-    digitalWrite(GRN_LED, HIGH);
-    platform.setLed(0, 255, 0);
-    delay(1000);
-    digitalWrite(BLU_LED, HIGH);
-    delay(1000);
-  // blue hello
-  platform.setLed(0, 0, 255);
+  //  analogWriteRange(255);
+  // analogWriteFreq(1<<9);
 
-
-  Serial.begin(9600);
-  Serial.println(F("Booting...."));
-
-  platform.setLed(255, 0, 0);
+  SetLedToColor(255, 0, 0);
   delay(1000);
-  platform.setLed(0, 255, 0);
+  SetLedToColor(0, 255, 0);
   delay(1000);
-  platform.setLed(0, 0, 255);
+  SetLedToColor(0, 0, 255);
   delay(1000);
-
-  SPI.begin();	         // Init SPI bus
-  mfrc522.PCD_Init();    // Init MFRC522
 
   Serial.print("wifi - connecting to ");
   Serial.println(ssid);
-  WiFi.begin(ssid, password);
+
   // Wait for connection
+  WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
 
-    platform.setLed(0, 0, 0);
+    SetLedToColor(0, 0, 0);
     delay(500);
-    platform.setLed(255, 0, 0);
+    SetLedToColor(255, 0, 0);
     delay(500);
-
     Serial.print(".");
   }
 
   platform.setLed(128,128,128);
+  breather.attach(0.07, breath);
 }
 
 void loop(void) {
-  //  Serial.println("Runnin' loop");
-// debug..
-// platform.detectRfidId();
     int ret = run(platform);
 
     if (ret < 0) {
