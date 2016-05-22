@@ -7,6 +7,7 @@
 #ifndef ARDUINO
 void delay(unsigned long);
 unsigned long millis();
+void yield();
 #else
 #include "Arduino.h"
 #endif
