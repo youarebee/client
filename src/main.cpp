@@ -224,7 +224,7 @@ void setup(void){
     Serial.print(".");
   }
 
-  platform.setLed(128,128,128);
+  platform.setLed(255,255,255);
   breather.attach(0.07, breath);
 }
 
