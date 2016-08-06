@@ -1,8 +1,8 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <lwip/def.h>
+#include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
 
-#include "secrets.h"
 #include "platform.h"
 #include "logic.h"
 
@@ -12,8 +12,11 @@
 
 #include <Ticker.h>
 
+#include <EEPROM.h>
 
-#define SHOULD_BREATH 1
+
+#define SHOULD_BREATH 0
+#define DEBUG_PROG 0
 /* wiring the MFRC522 to ESP8266 (ESP-12)
 RST     = GPIO15
 SDA(SS) = GPIO2
@@ -29,8 +32,8 @@ GND     = GND
 #define SS_PIN	16 // 16  // SDA-PIN für RC522 - RFID - SPI - Modul GPIO2
 
 
-#define RED_LED 4
-#define GRN_LED 15
+#define RED_LED 15
+#define GRN_LED 4
 #define BLU_LED 0
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
@@ -133,9 +136,9 @@ void DefaultPlatform::setLed(uint8_t r,uint8_t g,uint8_t b) {
 #define BREATH_TIME 3000
 
 #define SetLedToColor(r,g,b) do { \
-  analogWrite(BLU_LED, map(r,0,255,0,1023)); \
+  analogWrite(RED_LED, map(r,0,255,0,1023)); \
   analogWrite(GRN_LED, map(g,0,255,0,1023)); \
-  analogWrite(RED_LED, map(b,0,255,0,1023)); \
+  analogWrite(BLU_LED, map(b,0,255,0,1023)); \
 } while(0)
 
 
@@ -186,22 +189,37 @@ void DefaultPlatform::getStickId(uint8_t* byteArray) {
   byteArray[3] = mac[3];
 }
 
-void setup(void){
+void configModeCallback(WiFiManager *myWiFiManager) {
+  Serial.println("Entered config mode");
+  Serial.println(WiFi.softAPIP());
+  Serial.println(myWiFiManager->getConfigPortalSSID());
+  SetLedToColor(255, 255, 0);
+}
 
+
+char serverHostAddress[32] = "";
+
+bool shouldSaveConfig = false;
+
+void saveConfigCallback () {
+  Serial.println("Should save config");
+  shouldSaveConfig = true;
+}
+
+const int RESET_PIN = 10;
+
+void setup(void) {
+  bool shouldStartConfigPortalAnyway = false;
   Serial.begin(9600);
+  EEPROM.begin(512);
   Serial.println(F("Booting...."));
   delay(1000);
-
   SPI.begin();	         // Init SPI bus
   mfrc522.PCD_Init();    // Init MFRC522
-
-//  pinMode(LED_PIN, OUTPUT);
+  pinMode(RESET_PIN, INPUT_PULLUP);
   pinMode(RED_LED, OUTPUT);
   pinMode(GRN_LED, OUTPUT);
   pinMode(BLU_LED, OUTPUT);
-
-  //  analogWriteRange(255);
-  // analogWriteFreq(1<<9);
 
   SetLedToColor(255, 0, 0);
   delay(1000);
@@ -210,31 +228,97 @@ void setup(void){
   SetLedToColor(0, 0, 255);
   delay(1000);
 
-  Serial.print("wifi - connecting to ");
-  Serial.println(ssid);
+  SetLedToColor(0, 255, 0);
 
-  // Wait for connection
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+  Serial.println("Loading config.");
+  const int hostSize = sizeof(serverHostAddress)/sizeof(serverHostAddress[0]);
 
-    SetLedToColor(0, 0, 0);
-    delay(500);
-    SetLedToColor(255, 0, 0);
-    delay(500);
-    Serial.print(".");
+  {
+    int i = 0;
+    for ( i = 0; i < hostSize-1; i++) {
+        serverHostAddress[i] = EEPROM.read(i);
+    }
+    serverHostAddress[i] = '\0';
   }
+  Serial.println(serverHostAddress);
+
+
+  Serial.println("wifi - trying to auto connect.");
+  WiFiManagerParameter serverHostAdParam("server", "URB server", serverHostAddress, hostSize);
+  WiFiManager wifiManager;
+  wifiManager.setSaveConfigCallback(saveConfigCallback);
+  wifiManager.addParameter(&serverHostAdParam);
+
+
+  // should we config anyway
+  shouldStartConfigPortalAnyway = digitalRead(RESET_PIN) == LOW;
+
+  if (Serial.available() && (Serial.read() == 'y') ){
+    shouldStartConfigPortalAnyway = true;
+  }
+
+  if (!shouldStartConfigPortalAnyway) {
+
+      SetLedToColor(255, 0, 0);
+
+      wifiManager.setAPCallback(configModeCallback);
+
+      if (!wifiManager.autoConnect()) {
+        Serial.println("failed to connect and hit timeout");
+        delay(3000);
+        //reset and try again, or maybe put it to deep sleep
+        ESP.reset();
+        delay(5000);
+      }
+  } else {
+      SetLedToColor(255, 255, 0);
+      String ssid = "ESP" + String(ESP.getChipId());
+      if (!wifiManager.startConfigPortal(ssid.c_str())) {
+        Serial.println("failed to connect and hit timeout");
+        delay(3000);
+        //reset and try again, or maybe put it to deep sleep
+        ESP.reset();
+        delay(5000);
+      }
+  }
+
+
+  if (shouldSaveConfig) {
+     Serial.println("Saving config. ");
+     Serial.println(serverHostAddress);
+     // save config
+     for (int i = 0; (i < hostSize) && serverHostAddress[i] != '\0' ; i++) {
+         EEPROM.write(i, serverHostAddress[i]);
+     }
+     EEPROM.commit();
+  }
+
+  HOST = serverHostAddress;
 
   platform.setLed(255,255,255);
   breather.attach(0.07, breath);
 }
 
 void loop(void) {
+
+#if DEBUG_PROG == 1
+
+RFID id = platform.detectRfidId();
+if ((id.id[0] != 0)||(id.id[1] != 0)||(id.id[2] != 0)||(id.id[3] != 0)) {
+
+  Serial.print("found card!");
+  platform.setLed(255,0,0);
+  delay(1000);
+  platform.setLed(255,255,255);
+}
+
+#else
     int ret = run(platform);
 
     if (ret < 0) {
       // client cant connect to host... try again in 5 seconds
       delay(5000);
     }
-
+#endif
 //    Serial.println("runned loop");
 }

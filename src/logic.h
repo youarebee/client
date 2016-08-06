@@ -3,6 +3,7 @@
 
 class Platform;
 
+extern int PORT;
 extern const char* HOST;
 int run(Platform& platform);
 

@@ -3,8 +3,9 @@
 #include "logic.h"
 #include <string.h>
 
-const uint16_t PORT = 2323;
-const char* HOST = "192.168.1.103";
+int PORT = 2323;
+// const char* HOST = "192.168.1.100";
+const char* HOST = "192.168.0.111";
 
 typedef uint8_t NodeId[4];
 
@@ -88,13 +89,15 @@ int run(Platform& platform) {
         frame.rawPacket.packetFrame.type = TOUCHED_PACKET;
         memcpy(frame.rawPacket.packetFrame.packets.TouhcedPacket.flowerId, id.id, 4);
         client.write(frame.rawPacket.data, FRAME_SIZE);
+
+      platform.println("got rfid, touch packet sent");
       }
     }
 
     // start to read frame, add a second to the timeout
     timeout = millis() + 1000;
 
-    platform.println("reading packet");
+    platform.println("reading packet from network");
     for (int i = 0; i < 16; i++) {
 
 
@@ -121,15 +124,19 @@ uint8_t r,g,b;
 
 switch (packet.rawPacket.packetFrame.type) {
   case CHELLO_PACKET:
+    platform.println("got chello packet");
   // can't happen
     break;
   case SHELLO_PACKET:
+    platform.println("got shello packet");
   // ignore - shouldn't happen
     break;
   case TOUCHED_PACKET:
+    platform.println("got touched packet");
   // can't happen
     break;
   case SET_ANIM_PACKET:
+    platform.println("got anim packet");
   // TODO...
     break;
   case SET_COLOR_PACKET:
@@ -144,8 +151,11 @@ switch (packet.rawPacket.packetFrame.type) {
 
     break;
   case HEARTBREAT_PACKET:
+    platform.println("got heartbeat packet");
   // ignore
     break;
+  default:
+    platform.println("got unknown packet");
 }
 
 }
