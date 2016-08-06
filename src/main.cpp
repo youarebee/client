@@ -284,6 +284,9 @@ void setup(void) {
 
 
   if (shouldSaveConfig) {
+
+     strcpy(serverHostAddress, serverHostAdParam.getValue());
+
      Serial.println("Saving config. ");
      Serial.println(serverHostAddress);
      // save config
