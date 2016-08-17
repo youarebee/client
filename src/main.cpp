@@ -32,8 +32,8 @@ GND     = GND
 #define SS_PIN	16 // 16  // SDA-PIN für RC522 - RFID - SPI - Modul GPIO2
 
 
-#define RED_LED 15
-#define GRN_LED 4
+#define RED_LED 4
+#define GRN_LED 15
 #define BLU_LED 0
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);
@@ -230,6 +230,7 @@ void setup(void) {
 
   SetLedToColor(0, 255, 0);
 
+#if DEBUG_PROG == 0
   Serial.println("Loading config.");
   const int hostSize = sizeof(serverHostAddress)/sizeof(serverHostAddress[0]);
 
@@ -242,7 +243,6 @@ void setup(void) {
   }
   Serial.println(serverHostAddress);
 
-
   Serial.println("wifi - trying to auto connect.");
   WiFiManagerParameter serverHostAdParam("server", "URB server", serverHostAddress, hostSize);
   WiFiManager wifiManager;
@@ -254,6 +254,11 @@ void setup(void) {
   shouldStartConfigPortalAnyway = digitalRead(RESET_PIN) == LOW;
 
   if (Serial.available() && (Serial.read() == 'y') ){
+    shouldStartConfigPortalAnyway = true;
+  }
+  RFID id = platform.detectRfidId();
+  if ((id.id[0] != 0)||(id.id[1] != 0)||(id.id[2] != 0)||(id.id[3] != 0)) {
+    Serial.println("Card attached, going to setup mode");
     shouldStartConfigPortalAnyway = true;
   }
 
@@ -290,9 +295,11 @@ void setup(void) {
      Serial.println("Saving config. ");
      Serial.println(serverHostAddress);
      // save config
-     for (int i = 0; (i < hostSize) && serverHostAddress[i] != '\0' ; i++) {
+     int i;
+     for ( i = 0; (i < hostSize) && serverHostAddress[i] != '\0' ; i++) {
          EEPROM.write(i, serverHostAddress[i]);
      }
+     EEPROM.write(i, '\0');
      EEPROM.commit();
   }
 
@@ -300,6 +307,7 @@ void setup(void) {
 
   platform.setLed(255,255,255);
   breather.attach(0.07, breath);
+#endif
 }
 
 void loop(void) {
